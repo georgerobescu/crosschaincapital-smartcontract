@@ -1,5 +1,26 @@
+/**
+Cross Chain Capital Version 2: $CCC
+Lets become deflationary. A new path and new goal. 
+
+Tokenomics:
+Total supply : 1500000000000
+10% of each buy goes to existing holders.
+10% of each sell goes into cross-chain farming/investing to add to the treasury and buy back CCC tokens. With community vote, funds will be used for marketing or buy backs
+
+Website:
+https://crosschaincapital.finance/
+
+Telegram:
+https://t.me/crosschaincapital
+
+Twitter:
+https://twitter.com/cchaincap
+
+Medium:
+https://medium.com/@crosschaincapital
+*/
 // SPDX-License-Identifier: Unlicensed
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.4;
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -91,11 +112,11 @@ contract Ownable is Context {
 
 }  
 
-interface IUniswapV2Factory {
+interface IJoeFactory {
     function createPair(address tokenA, address tokenB) external returns (address pair);
 }
 
-interface IUniswapV2Router02 {
+interface IJoeRouter02 {
     function swapExactTokensForAVAXSupportingFeeOnTransferTokens(
         uint amountIn,
         uint amountOutMin,
@@ -115,7 +136,7 @@ interface IUniswapV2Router02 {
     ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
 }
 
-contract test is Context, IERC20, Ownable {
+contract CrossChainCapital is Context, IERC20, Ownable {
     using SafeMath for uint256;
     mapping (address => uint256) private _rOwned;
     mapping (address => uint256) private _tOwned;
@@ -126,8 +147,8 @@ contract test is Context, IERC20, Ownable {
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
     
-    string private constant _name = unicode"test";
-    string private constant _symbol = unicode"test";
+    string private constant _name = unicode"Cross Chain Capital V2";
+    string private constant _symbol = unicode"CCC";
     
     uint8 private constant _decimals = 9;
     uint256 private _taxFee = 10;
@@ -136,8 +157,8 @@ contract test is Context, IERC20, Ownable {
     uint256 private _previousteamFee = _teamFee;
     address payable private w1;
     address payable private w2;
-    IUniswapV2Router02 private uniswapV2Router;
-    address private uniswapV2Pair;
+    IJoeRouter02 private joeV2Router;
+    address private joeV2Pair;
     bool private tradingEnabled = false;
     bool private canSwap = true;
     bool private inSwap = false;
@@ -153,9 +174,9 @@ contract test is Context, IERC20, Ownable {
         _;
         inSwap = false;
     }
-        constructor () {
-        w1 = payable(0xdFF0091f2faFEa051d4fE026168AD7753583A330);
-        w2 = payable(0xdFF0091f2faFEa051d4fE026168AD7753583A330);
+        constructor (address payable treasuryWalletAddress , address payable CCCWalletAddress) {
+        w1 = treasuryWalletAddress;
+        w2 = CCCWalletAddress;
         _rOwned[_msgSender()] = _rTotal;
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
@@ -163,11 +184,11 @@ contract test is Context, IERC20, Ownable {
         _isExcludedFromFee[w2] = true;
         emit Transfer(address(0), _msgSender(), _tTotal);
 
-         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
-        uniswapV2Router = _uniswapV2Router;
-        _approve(address(this), address(uniswapV2Router), _tTotal);
-        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory()).createPair(address(this), _uniswapV2Router.WAVAX());
-        IERC20(uniswapV2Pair).approve(address(uniswapV2Router), type(uint).max);
+        IJoeRouter02 _uniswapV2Router = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+        joeV2Router = _uniswapV2Router;
+        _approve(address(this), address(joeV2Router), _tTotal);
+        joeV2Pair = IJoeFactory(_uniswapV2Router.factory()).createPair(address(this), _uniswapV2Router.WAVAX());
+        IERC20(joeV2Pair).approve(address(joeV2Router), type(uint).max);
     }
 
     function name() public pure returns (string memory) {
@@ -254,10 +275,10 @@ contract test is Context, IERC20, Ownable {
         }
             uint256 contractTokenBalance = balanceOf(address(this));
 
-            if(!inSwap && from != uniswapV2Pair && tradingEnabled && canSwap) {
+            if(!inSwap && from != joeV2Pair && tradingEnabled && canSwap) {
                 if(contractTokenBalance > 0) {
-                    if(contractTokenBalance > balanceOf(uniswapV2Pair).mul(5).div(100)) {
-                        contractTokenBalance = balanceOf(uniswapV2Pair).mul(5).div(100);
+                    if(contractTokenBalance > balanceOf(joeV2Pair).mul(5).div(100)) {
+                        contractTokenBalance = balanceOf(joeV2Pair).mul(5).div(100);
                     }
                     swapTokensForEth(contractTokenBalance);
                 }
@@ -273,29 +294,29 @@ contract test is Context, IERC20, Ownable {
             takeFee = false;
         }
 
-        if(from != uniswapV2Pair && to != uniswapV2Pair) {
+        if(from != joeV2Pair && to != joeV2Pair) {
             takeFee = false;
         }
 
-        if (takeFee && from == uniswapV2Pair) {
+        if (takeFee && from == joeV2Pair) {
          _previousteamFee = _teamFee;
          _teamFee = 0;
         }
-        if(takeFee && to == uniswapV2Pair) {
+        if(takeFee && to == joeV2Pair) {
          _previousTaxFee = _taxFee;
          _taxFee = 0;
         } 
         _tokenTransfer(from,to,amount,takeFee);
-        if (takeFee && from == uniswapV2Pair) _teamFee = _previousteamFee;
-        if (takeFee && to == uniswapV2Pair) _taxFee = _previousTaxFee;
+        if (takeFee && from == joeV2Pair) _teamFee = _previousteamFee;
+        if (takeFee && to == joeV2Pair) _taxFee = _previousTaxFee;
     }
 
     function swapTokensForEth(uint256 tokenAmount) private lockTheSwap {
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = uniswapV2Router.WAVAX();
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
+        path[1] = joeV2Router.WAVAX();
+        _approve(address(this), address(joeV2Router), tokenAmount);
+        joeV2Router.swapExactTokensForAVAXSupportingFeeOnTransferTokens(
             tokenAmount,
             0,
             path,
@@ -376,10 +397,16 @@ contract test is Context, IERC20, Ownable {
     receive() external payable {}
     
 
-    function setMarketingWallet(address payable _w1) external {
+    function setTreasuryWallet(address payable _w1) external {
         require(_msgSender() == w1);
         w1 = _w1;
         _isExcludedFromFee[w1] = true;
+    }
+
+    function setCCCWallet(address payable _w2) external {
+        require(_msgSender() == w2);
+        w2 = _w2;
+        _isExcludedFromFee[w2] = true;
     }
 
     function excludeFromFee(address payable ad) external {
