@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.4;
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
@@ -97,20 +97,22 @@ contract Migration is Ownable {
     constructor(address _oldToken, address _newToken) {
         oldToken = IERC20(_oldToken);
         newToken = IERC20(_newToken);
-        factor1 = 1000;
+        factor1 = 900;
         factor2 = 800;
         factor3 = 700;
-
-        timestamp1 = block.timestamp;
-        timestamp2 = block.timestamp + 8 hours;
-        timestamp3 = block.timestamp + 16 hours;
-        timestamp4 = block.timestamp + 24 hours;
 
         blockBots = true;
         migratingEnabled = false;
     }
 
-    function MIGRATE(uint256 _amount) external {
+    function setStartTimestamps() external onlyOwner {
+        timestamp1 = block.timestamp;
+        timestamp2 = block.timestamp + 8 hours;
+        timestamp3 = block.timestamp + 16 hours;
+        timestamp4 = block.timestamp + 24 hours;
+    }
+
+    function migrate(uint256 _amount) external {
         if (blockBots) {
             require(msg.sender == tx.origin, "You are contract");
         }
